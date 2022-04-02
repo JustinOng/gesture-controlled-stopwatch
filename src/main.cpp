@@ -1,13 +1,14 @@
 #include <Arduino.h>
 
 #include "Inference.h"
+#include "Keyboard.h"
 #include "Sensor.h"
 
 constexpr uint16_t SENSOR_MAX_DISTANCE = 600;
 
 // Number of times that a class must appear in the last LEN_HISTORY inferences to be a valid detection
-constexpr uint8_t MIN_VALID_COUNT = 8;
-constexpr uint8_t LEN_HISTORY = 16;
+constexpr uint8_t MIN_VALID_COUNT = 4;
+constexpr uint8_t LEN_HISTORY = 8;
 static int8_t history[LEN_HISTORY];
 
 void error() {
@@ -21,8 +22,15 @@ void error() {
 }
 
 void setup() {
+  while (!Serial) {
+  };
   Serial.begin(9600);
   Serial.println("Setup begin");
+
+  delay(1000);
+
+  pinMode(LED_RED, OUTPUT);
+  digitalWrite(LED_RED, HIGH);
 
   int8_t ret = inference_setup();
   if (ret != 0) {
@@ -40,8 +48,9 @@ void setup() {
     error();
   }
 
-  pinMode(LED_RED, OUTPUT);
-  digitalWrite(LED_RED, HIGH);
+  Serial.println("Sensor setup done");
+
+  keyboard_setup();
 
   memset(history, 0xFF, LEN_HISTORY);
 
@@ -90,6 +99,8 @@ void loop() {
   static uint8_t history_pos = 0;
   static uint8_t history_class_count[NUM_CLASSES] = {0};
 
+  keyboard_loop();
+
   if (Serial.available()) {
     switch (Serial.read()) {
       case 'e':
@@ -122,9 +133,13 @@ void loop() {
       }
     }
 
-    if (history_class_count[max_class] > MIN_VALID_COUNT) {
+    static uint8_t last_class = 255;
+    if (history_class_count[max_class] > MIN_VALID_COUNT && max_class != last_class) {
+      last_class = max_class;
+
       Serial.print("Inference: ");
       Serial.println(max_class);
+      keyboard_write('0' + max_class);
     }
   }
 }
