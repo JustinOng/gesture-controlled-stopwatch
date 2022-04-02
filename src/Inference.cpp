@@ -24,7 +24,7 @@ TfLiteTensor* model_output = nullptr;
 // Create an area of memory to use for input, output, and other TensorFlow
 // arrays. You'll need to adjust this by combiling, running, and looking
 // for errors.
-constexpr int kTensorArenaSize = 5 * 1024;
+constexpr int kTensorArenaSize = 16 * 1024;
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
@@ -49,7 +49,7 @@ int8_t inference_setup() {
   micro_resolver.AddSoftmax();
   micro_resolver.AddQuantize();
   micro_resolver.AddDequantize();
-  micro_resolver.AddPrelu();
+  micro_resolver.AddRelu();
   micro_resolver.AddReshape();
 
   // Build an interpreter to run the model

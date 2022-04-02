@@ -72,9 +72,6 @@ int8_t read_infer() {
   }
 
   float ave = sum / 64;
-  for (uint8_t i = 0; i < (SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH); i++) {
-    normalised_distances[i] -= ave;
-  }
 
   int8_t inference = inference_infer(normalised_distances);
   if (raw_data_mode) {
