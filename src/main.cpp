@@ -65,8 +65,7 @@ void setup() {
 bool raw_data_mode = false;
 
 int8_t read_infer() {
-  float distances[SENSOR_IMAGE_SIZE];
-  uint16_t sigma[SENSOR_IMAGE_SIZE];
+  uint16_t distances[SENSOR_IMAGE_SIZE], sigma[SENSOR_IMAGE_SIZE];
   float ndistances[SENSOR_IMAGE_SIZE], nsigma[SENSOR_IMAGE_SIZE];
 
   int8_t ret = sensor_read(distances, sigma);

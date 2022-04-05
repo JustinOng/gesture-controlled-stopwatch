@@ -10,6 +10,6 @@ constexpr uint8_t SENSOR_IMAGE_SIZE = SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH;
 constexpr int PIN_POWER = 2;
 
 int8_t sensor_setup();
-int8_t sensor_read(float distances[], uint16_t sigma[]);
+int8_t sensor_read(uint16_t distances[], uint16_t sigma[]);
 
 #endif
