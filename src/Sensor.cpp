@@ -19,6 +19,7 @@ int8_t sensor_setup() {
     return 1;
   }
 
+  imager.setSharpenerPercent(20);
   imager.setResolution(SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH);
   imager.setRangingFrequency(15);
   imager.startRanging();
@@ -26,7 +27,7 @@ int8_t sensor_setup() {
   return 0;
 }
 
-int8_t sensor_read(float distances[]) {
+int8_t sensor_read(float distances[], uint16_t sigma[]) {
   VL53L5CX_ResultsData measurementData;
 
   if (!imager.isDataReady()) {
@@ -41,6 +42,7 @@ int8_t sensor_read(float distances[]) {
   for (int y = 0; y <= SENSOR_IMAGE_WIDTH * (SENSOR_IMAGE_WIDTH - 1); y += SENSOR_IMAGE_WIDTH) {
     for (int x = SENSOR_IMAGE_WIDTH - 1; x >= 0; x--) {
       distances[i] = measurementData.distance_mm[x + y];
+      sigma[i] = measurementData.range_sigma_mm[x + y];
       i++;
     }
   }

@@ -72,16 +72,14 @@ int8_t inference_setup() {
   return 0;
 }
 
-int8_t inference_infer(float distances[], float deltas[]) {
+int8_t inference_infer(float ndistances[], float nsigma[]) {
   for (uint8_t i = 0; i < 128; i++) {
     if (i % 2 == 0) {
-      model_input->data.f[i] = distances[i / 2];
+      model_input->data.f[i] = ndistances[i / 2];
     } else {
-      model_input->data.f[i] = deltas[i / 2];
+      model_input->data.f[i] = nsigma[i / 2];
     }
   }
-
-  memcpy(model_input->data.f, distances, sizeof(float) * 64);
 
   uint32_t start = millis();
   if (interpreter->Invoke() != kTfLiteOk) {

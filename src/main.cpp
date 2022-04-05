@@ -5,6 +5,7 @@
 #include "Sensor.h"
 
 constexpr uint16_t SENSOR_MAX_DISTANCE = 400;
+constexpr uint16_t SENSOR_MAX_SIGMA = 10;
 constexpr float SENSOR_DELTA_FILTER_ALPHA = 0.5;
 
 // Number of times that a class must appear in the last LEN_HISTORY inferences to be a valid detection
@@ -66,10 +67,7 @@ bool raw_data_mode = false;
 int8_t read_infer() {
   float distances[SENSOR_IMAGE_SIZE];
   uint16_t sigma[SENSOR_IMAGE_SIZE];
-  float normalised_distances[SENSOR_IMAGE_SIZE];
-
-  static float prev_ndistances[SENSOR_IMAGE_SIZE];
-  static float delta[SENSOR_IMAGE_SIZE];
+  float ndistances[SENSOR_IMAGE_SIZE], nsigma[SENSOR_IMAGE_SIZE];
 
   int8_t ret = sensor_read(distances, sigma);
   if (ret != 0) {
@@ -79,18 +77,19 @@ int8_t read_infer() {
   for (uint8_t i = 0; i < SENSOR_IMAGE_SIZE; i++) {
     // Normalise distances
     if (distances[i] > SENSOR_MAX_DISTANCE) {
-      normalised_distances[i] = 1.0;
+      ndistances[i] = 1.0;
     } else {
-      normalised_distances[i] = (float)distances[i] / SENSOR_MAX_DISTANCE;
+      ndistances[i] = (float)distances[i] / SENSOR_MAX_DISTANCE;
     }
 
-    delta[i] = SENSOR_DELTA_FILTER_ALPHA * delta[i] +
-               (1 - SENSOR_DELTA_FILTER_ALPHA) * abs(normalised_distances[i] - prev_ndistances[i]);
+    if (sigma[i] > SENSOR_MAX_SIGMA) {
+      nsigma[i] = 1.0;
+    } else {
+      nsigma[i] = (float)sigma[i] / SENSOR_MAX_SIGMA;
+    }
   }
 
-  memcpy(prev_ndistances, normalised_distances, sizeof(prev_ndistances));
-
-  int8_t inference = inference_infer(normalised_distances, delta);
+  int8_t inference = inference_infer(ndistances, nsigma);
   if (raw_data_mode) {
     for (uint8_t i = 0; i < 64; i++) {
       Serial.print(distances[i]);
