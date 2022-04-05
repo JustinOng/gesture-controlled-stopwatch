@@ -1,8 +1,8 @@
 #include <Arduino.h>
 
 #include "Inference.h"
-#include "Keyboard.h"
 #include "Sensor.h"
+#include "Stopwatch.h"
 
 constexpr uint16_t SENSOR_MAX_DISTANCE = 400;
 constexpr uint16_t SENSOR_MAX_SIGMA = 10;
@@ -55,7 +55,7 @@ void setup() {
 
   Serial.println("Sensor setup done");
 
-  keyboard_setup();
+  stopwatch_setup();
 
   memset(history, 0xFF, LEN_HISTORY);
 
@@ -111,7 +111,7 @@ void loop() {
   static uint8_t history_pos = 0;
   static uint8_t history_class_count[NUM_CLASSES] = {0};
 
-  keyboard_loop();
+  stopwatch_loop();
 
   if (Serial.available()) {
     switch (Serial.read()) {
@@ -153,12 +153,12 @@ void loop() {
     }
 
     static uint8_t last_class = 255;
-    if (history_class_count[max_class] > MIN_VALID_COUNT) {  // && max_class != last_class) {
+    if (history_class_count[max_class] > MIN_VALID_COUNT && max_class != last_class) {
       last_class = max_class;
 
       Serial.print("Inference: ");
       Serial.println(max_class);
-      // keyboard_write('0' + max_class);
+      stopwatch_add_digit(max_class);
     }
   }
 }
