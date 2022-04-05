@@ -4,6 +4,8 @@
 #include "Sensor.h"
 #include "Stopwatch.h"
 
+// 4 center blocks must be lesser than this distance for inference to take place
+constexpr uint16_t SENSOR_PRESENCE_DISTANCE = 250;
 constexpr uint16_t SENSOR_MAX_DISTANCE = 400;
 constexpr uint16_t SENSOR_MAX_SIGMA = 10;
 constexpr float SENSOR_DELTA_FILTER_ALPHA = 0.5;
@@ -101,6 +103,17 @@ int8_t read_infer() {
     }
     Serial.println();
   }
+
+  // If nothing nearby, just quit
+  if (
+      distances[27] > SENSOR_PRESENCE_DISTANCE ||
+      distances[28] > SENSOR_PRESENCE_DISTANCE ||
+      distances[35] > SENSOR_PRESENCE_DISTANCE ||
+      distances[36] > SENSOR_PRESENCE_DISTANCE) {
+    return -1;
+  }
+
+  int8_t inference = inference_infer(ndistances, nsigma);
 
   return inference;
 }
