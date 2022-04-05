@@ -4,7 +4,8 @@
 #include "Keyboard.h"
 #include "Sensor.h"
 
-constexpr uint16_t SENSOR_MAX_DISTANCE = 600;
+constexpr uint16_t SENSOR_MAX_DISTANCE = 400;
+constexpr float SENSOR_DELTA_FILTER_ALPHA = 0.5;
 
 // Number of times that a class must appear in the last LEN_HISTORY inferences to be a valid detection
 constexpr uint8_t MIN_VALID_COUNT = 4;
@@ -22,6 +23,7 @@ void error() {
 }
 
 void setup() {
+  // digitalWrite(PIN_ENABLE_SENSORS_3V3, LOW);
   while (!Serial) {
   };
   Serial.begin(9600);
@@ -31,6 +33,8 @@ void setup() {
 
   pinMode(LED_RED, OUTPUT);
   digitalWrite(LED_RED, HIGH);
+
+  nrf_gpio_cfg_sense_input(44, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
 
   int8_t ret = inference_setup();
   if (ret != 0) {
@@ -60,32 +64,41 @@ void setup() {
 bool raw_data_mode = false;
 
 int8_t read_infer() {
-  float distances[SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH];
-  float normalised_distances[SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH];
+  float distances[SENSOR_IMAGE_SIZE];
+  uint16_t sigma[SENSOR_IMAGE_SIZE];
+  float normalised_distances[SENSOR_IMAGE_SIZE];
 
-  int8_t ret = sensor_read(distances);
+  static float prev_ndistances[SENSOR_IMAGE_SIZE];
+  static float delta[SENSOR_IMAGE_SIZE];
+
+  int8_t ret = sensor_read(distances, sigma);
   if (ret != 0) {
     return -2;
   }
 
-  float sum = 0;
-  // Normalise distances
-  for (uint8_t i = 0; i < (SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH); i++) {
+  for (uint8_t i = 0; i < SENSOR_IMAGE_SIZE; i++) {
+    // Normalise distances
     if (distances[i] > SENSOR_MAX_DISTANCE) {
       normalised_distances[i] = 1.0;
     } else {
       normalised_distances[i] = (float)distances[i] / SENSOR_MAX_DISTANCE;
     }
 
-    sum += normalised_distances[i];
+    delta[i] = SENSOR_DELTA_FILTER_ALPHA * delta[i] +
+               (1 - SENSOR_DELTA_FILTER_ALPHA) * abs(normalised_distances[i] - prev_ndistances[i]);
   }
 
-  float ave = sum / 64;
+  memcpy(prev_ndistances, normalised_distances, sizeof(prev_ndistances));
 
-  int8_t inference = inference_infer(normalised_distances);
+  int8_t inference = inference_infer(normalised_distances, delta);
   if (raw_data_mode) {
     for (uint8_t i = 0; i < 64; i++) {
-      Serial.print((uint16_t)distances[i]);
+      Serial.print(distances[i]);
+      Serial.print(", ");
+    }
+
+    for (uint8_t i = 0; i < 64; i++) {
+      Serial.print(sigma[i]);
       Serial.print(", ");
     }
     Serial.println();
@@ -112,6 +125,13 @@ void loop() {
     }
   }
 
+  // Serial.print("Sleep:");
+  // Serial.println(millis());
+  // __SEV();
+  // __WFE();
+  // Serial.print("Wake:");
+  // Serial.println(millis());
+
   int8_t inference = read_infer();
 
   if (inference != -2) {
@@ -134,12 +154,12 @@ void loop() {
     }
 
     static uint8_t last_class = 255;
-    if (history_class_count[max_class] > MIN_VALID_COUNT && max_class != last_class) {
+    if (history_class_count[max_class] > MIN_VALID_COUNT) {  // && max_class != last_class) {
       last_class = max_class;
 
       Serial.print("Inference: ");
       Serial.println(max_class);
-      keyboard_write('0' + max_class);
+      // keyboard_write('0' + max_class);
     }
   }
 }

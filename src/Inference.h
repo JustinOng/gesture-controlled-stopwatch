@@ -18,8 +18,9 @@ int8_t inference_setup();
  *
  * @param distances array of 64 distances, where looking forward,
  *                  element 0 is top left, 7 is top right, 63 is bottom right
+ * @param deltas    array of 64 deltas, same format as \p distances
  * @return int8_t 0-9 if valid symbol found, -1 if no valid symbol. -2 on inference error,
  */
-int8_t inference_infer(float distances[]);
+int8_t inference_infer(float distances[], float deltas[]);
 
 #endif
