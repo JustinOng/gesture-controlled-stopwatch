@@ -7,8 +7,10 @@ constexpr int MAX_DIGITS = 3;
 static uint8_t digit_count = 0;
 
 static bool active = false;
-static uint32_t count = 0;
-static uint32_t cur_count = 0;
+static int32_t count = 0;
+static int32_t cur_count = 0;
+static uint32_t start_time = 0;
+static uint32_t done_time = 0;
 
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
@@ -24,13 +26,47 @@ void stopwatch_setup() {
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
   display.display();
+
+  stopwatch_redraw();
 }
 
 void stopwatch_loop() {
+  static int32_t last_drawn_count = 0;
+
+  if (active) {
+    int32_t elapsed = (millis() - start_time) / 1000;
+
+    if (elapsed == last_drawn_count) {
+      return;
+    }
+
+    last_drawn_count = elapsed;
+
+    cur_count = count - elapsed;
+
+    if (cur_count < 0) {
+      active = false;
+      done_time = millis();
+    } else {
+      stopwatch_redraw();
+    }
+  } else {
+    if (done_time != (uint32_t)-1) {
+      if ((millis() - done_time) < 1000) {
+        display.fillRect(0, 0, 128, 16, BLACK);
+        display.setCursor(0, 0);
+        display.print("Time");
+        display.display();
+      } else {
+        done_time = (uint32_t)-1;
+        stopwatch_redraw();
+      }
+    }
+  }
 }
 
 void stopwatch_redraw() {
-  uint32_t &draw_count = count;
+  int32_t draw_count = count;
   if (active) {
     draw_count = cur_count;
   }
@@ -71,10 +107,11 @@ void stopwatch_backspace() {
   }
 }
 
-void stopwatch_set_state(bool _active) {
-  active = _active;
+void stopwatch_toggle_state() {
+  active = !active;
 
   if (active) {
     cur_count = count;
+    start_time = millis();
   }
 }

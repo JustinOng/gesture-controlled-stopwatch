@@ -10,6 +10,8 @@ constexpr uint16_t SENSOR_MAX_DISTANCE = 400;
 constexpr uint16_t SENSOR_MAX_SIGMA = 10;
 // Sum of all distances must be less than this to count as a control character
 constexpr uint16_t SENSOR_CTRL_THRESHOLD = 3000;
+constexpr uint16_t SENSOR_CTRL_SHORT_DURATION = 500;
+constexpr uint16_t SENSOR_CTRL_LONG_DURATION = 3000;
 constexpr char SENSOR_CTRL_SYMBOL = 0xA;
 constexpr float SENSOR_DELTA_FILTER_ALPHA = 0.5;
 
@@ -96,7 +98,6 @@ int8_t read_infer() {
     }
   }
 
-  int8_t inference = inference_infer(ndistances, nsigma);
   if (raw_data_mode) {
     for (uint8_t i = 0; i < 64; i++) {
       Serial.print(distances[i]);
@@ -166,17 +167,21 @@ void loop() {
   static uint32_t last_ctrl_seen = -1;
 
   if (inference != -2) {
+    uint32_t diff = last_ctrl_seen != (uint32_t)-1 ? millis() - last_ctrl_seen : 0;
+
     if (inference == SENSOR_CTRL_SYMBOL) {
       if (last_ctrl_seen == (uint32_t)-1) {
         last_ctrl_seen = millis();
       }
 
+      if (diff > SENSOR_CTRL_LONG_DURATION) {
+        stopwatch_toggle_state();
+
+        last_ctrl_seen = (uint32_t)-1;
+      }
     } else {
-      uint32_t diff = last_ctrl_seen != (uint32_t)-1 ? millis() - last_ctrl_seen : 0;
-      if (diff > 1000 && diff < 3000) {
+      if (diff > SENSOR_CTRL_SHORT_DURATION && diff < SENSOR_CTRL_LONG_DURATION) {
         stopwatch_backspace();
-      } else if (diff > 3000) {
-        Serial.println("long");
       }
 
       last_ctrl_seen = (uint32_t)-1;

@@ -9,6 +9,6 @@ void stopwatch_loop();
 void stopwatch_add_digit(uint8_t c);
 void stopwatch_backspace();
 
-void stopwatch_set_state(bool active);
+void stopwatch_toggle_state();
 
 #endif
