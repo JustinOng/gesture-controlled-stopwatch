@@ -1,6 +1,7 @@
 #include "Stopwatch.h"
 
-#include <LiquidCrystal_I2C.h>
+#define SSD1306_NO_SPLASH
+#include <Adafruit_SSD1306.h>
 
 constexpr int MAX_DIGITS = 3;
 static uint8_t digit_count = 0;
@@ -9,19 +10,20 @@ static bool active = false;
 static uint32_t count = 0;
 static uint32_t cur_count = 0;
 
-LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4, 5, 6, 16, 11, 12, 13, 14, POSITIVE);
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
 void stopwatch_redraw();
 
 void stopwatch_setup() {
-  Wire.setClock(100000);
-  if (lcd.begin(16, 2)) {
-    lcd.setCursor(0, 1);
-    lcd.print("hello");
-  } else {
-    Serial.println("LCD init failed");
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    return;
   }
-  Wire.setClock(400000);
+
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.display();
 }
 
 void stopwatch_loop() {
@@ -36,13 +38,18 @@ void stopwatch_redraw() {
   char buf[MAX_DIGITS + 1];
   snprintf(buf, sizeof(buf), "%3lu", draw_count);
 
-  Wire.setClock(100000);
-  lcd.setCursor(0, 0);
-  lcd.print(buf);
-  Wire.setClock(400000);
+  display.fillRect(0, 0, 128, 16, BLACK);
+  display.setCursor(0, 0);
+  display.print(buf);
+  display.display();
 }
 
 void stopwatch_add_digit(uint8_t c) {
+  display.fillRect(0, 16, 128, 16, BLACK);
+  display.setCursor(0, 16);
+  display.print(c);
+  display.display();
+
   if (active) return;
 
   if (digit_count < MAX_DIGITS) {
