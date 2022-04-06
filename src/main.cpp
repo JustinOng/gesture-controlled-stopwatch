@@ -11,7 +11,7 @@ constexpr uint16_t SENSOR_MAX_SIGMA = 10;
 constexpr float SENSOR_DELTA_FILTER_ALPHA = 0.5;
 
 // Number of times that a class must appear in the last LEN_HISTORY inferences to be a valid detection
-constexpr uint8_t MIN_VALID_COUNT = 4;
+constexpr uint8_t MIN_VALID_COUNT = 2;
 constexpr uint8_t LEN_HISTORY = 8;
 static int8_t history[LEN_HISTORY];
 

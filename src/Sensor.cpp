@@ -11,6 +11,8 @@ int8_t sensor_setup() {
   pinMode(PIN_POWER, OUTPUT);
   digitalWrite(PIN_POWER, HIGH);
 
+  delay(10);
+
   Wire.begin();
   Wire.setClock(400000);
 
@@ -24,7 +26,7 @@ int8_t sensor_setup() {
 
   imager.setSharpenerPercent(20);
   imager.setResolution(SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH);
-  imager.setRangingFrequency(15);
+  imager.setRangingFrequency(5);
   imager.startRanging();
 
   return 0;

@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 // Minimum confidence to report symbol as found
-constexpr float MIN_INFERENCE_CONFIDENCE = 0.8;
+constexpr float MIN_INFERENCE_CONFIDENCE = 0.9;
 constexpr int NUM_SYMBOLS = 10;
 
 /**
