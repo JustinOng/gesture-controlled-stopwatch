@@ -26,6 +26,8 @@ void stopwatch_setup() {
   display.clearDisplay();
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.print("Inf:");
   display.display();
 
   stopwatch_redraw();
@@ -54,9 +56,9 @@ void stopwatch_loop() {
   } else {
     if (done_time != (uint32_t)-1) {
       if ((millis() - done_time) < 1000) {
-        display.fillRect(0, 0, 128, 16, BLACK);
-        display.setCursor(0, 0);
-        display.print("Time");
+        display.fillRect(0, 24, 128, 24, BLACK);
+        display.setCursor(0, 24);
+        display.print("Time's Up!");
         display.display();
       } else {
         done_time = (uint32_t)-1;
@@ -72,20 +74,20 @@ void stopwatch_redraw() {
     draw_count = cur_count;
   }
 
-  char buf[MAX_DIGITS + 1];
-  snprintf(buf, sizeof(buf), "%3lu", draw_count);
+  char buf[6 + MAX_DIGITS + 1];
+  snprintf(buf, sizeof(buf), "Timer %3lu", draw_count);
 
   Wire.setClock(100000);
-  display.fillRect(0, 0, 128, 16, BLACK);
-  display.setCursor(0, 0);
+  display.fillRect(0, 24, 128, 24, BLACK);
+  display.setCursor(0, 24);
   display.print(buf);
   display.display();
 }
 
 void stopwatch_add_digit(uint8_t c) {
   Wire.setClock(100000);
-  display.fillRect(0, 16, 128, 16, BLACK);
-  display.setCursor(0, 16);
+  display.fillRect(64, 0, 128 - 64, 24, BLACK);
+  display.setCursor(64, 0);
   display.print(c);
   display.display();
 
