@@ -27,6 +27,7 @@ int8_t sensor_setup() {
   imager.setSharpenerPercent(20);
   imager.setResolution(SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH);
   imager.setRangingFrequency(5);
+  imager.setIntegrationTime(5);
   imager.startRanging();
 
   return 0;
