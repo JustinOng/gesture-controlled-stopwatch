@@ -8,6 +8,9 @@
 constexpr uint16_t SENSOR_PRESENCE_DISTANCE = 250;
 constexpr uint16_t SENSOR_MAX_DISTANCE = 400;
 constexpr uint16_t SENSOR_MAX_SIGMA = 10;
+// Sum of all distances must be less than this to count as a control character
+constexpr uint16_t SENSOR_CTRL_THRESHOLD = 3000;
+constexpr char SENSOR_CTRL_SYMBOL = 0xA;
 constexpr float SENSOR_DELTA_FILTER_ALPHA = 0.5;
 
 // Number of times that a class must appear in the last LEN_HISTORY inferences to be a valid detection
@@ -75,7 +78,10 @@ int8_t read_infer() {
     return -2;
   }
 
+  uint32_t sum = 0;
   for (uint8_t i = 0; i < SENSOR_IMAGE_SIZE; i++) {
+    sum += distances[i];
+
     // Normalise distances
     if (distances[i] > SENSOR_MAX_DISTANCE) {
       ndistances[i] = 1.0;
@@ -102,6 +108,18 @@ int8_t read_infer() {
       Serial.print(", ");
     }
     Serial.println();
+  }
+
+  static uint32_t last_ctrl_seen = 0;
+
+  if (sum < SENSOR_CTRL_THRESHOLD) {
+    last_ctrl_seen = millis();
+    return SENSOR_CTRL_SYMBOL;
+  }
+
+  // Crude bandaid for false trigger after hand is removed for control character
+  if ((millis() - last_ctrl_seen) < 1000) {
+    return -1;
   }
 
   // If nothing nearby, just quit
@@ -145,32 +163,50 @@ void loop() {
 
   int8_t inference = read_infer();
 
+  static uint32_t last_ctrl_seen = -1;
+
   if (inference != -2) {
-    if (history[history_pos] != -1) {
-      history_class_count[history[history_pos]]--;
-    }
-
-    if (inference > -1) {
-      history_class_count[inference]++;
-    }
-
-    history[history_pos] = inference;
-    history_pos = (history_pos + 1) % LEN_HISTORY;
-
-    uint8_t max_class = 0;
-    for (uint8_t i = 0; i < NUM_CLASSES; i++) {
-      if (history_class_count[i] > history_class_count[max_class]) {
-        max_class = i;
+    if (inference == SENSOR_CTRL_SYMBOL) {
+      if (last_ctrl_seen == (uint32_t)-1) {
+        last_ctrl_seen = millis();
       }
-    }
 
-    static uint8_t last_class = 255;
-    if (history_class_count[max_class] > MIN_VALID_COUNT && max_class != last_class) {
-      last_class = max_class;
+    } else {
+      uint32_t diff = last_ctrl_seen != (uint32_t)-1 ? millis() - last_ctrl_seen : 0;
+      if (diff > 1000 && diff < 3000) {
+        stopwatch_backspace();
+      } else if (diff > 3000) {
+        Serial.println("long");
+      }
 
-      Serial.print("Inference: ");
-      Serial.println(max_class);
-      stopwatch_add_digit(max_class);
+      last_ctrl_seen = (uint32_t)-1;
+
+      if (history[history_pos] != -1) {
+        history_class_count[history[history_pos]]--;
+      }
+
+      if (inference > -1) {
+        history_class_count[inference]++;
+      }
+
+      history[history_pos] = inference;
+      history_pos = (history_pos + 1) % LEN_HISTORY;
+
+      uint8_t max_class = 0;
+      for (uint8_t i = 0; i < NUM_CLASSES; i++) {
+        if (history_class_count[i] > history_class_count[max_class]) {
+          max_class = i;
+        }
+      }
+
+      static uint8_t last_class = 255;
+      if (history_class_count[max_class] > MIN_VALID_COUNT && max_class != last_class) {
+        last_class = max_class;
+
+        Serial.print("Inference: ");
+        Serial.println(max_class);
+        stopwatch_add_digit(max_class);
+      }
     }
   }
 }
