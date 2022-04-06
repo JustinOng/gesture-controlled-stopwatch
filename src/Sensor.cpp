@@ -47,6 +47,7 @@ int8_t sensor_read(uint16_t distances[], uint16_t sigma[]) {
   // Extra 4 bytes in the middle at offset 1020 that we don't care about
   // Because making two separate reads incurs an additional 4ms penalty,
   // We read this extra 4 bytes and just ignore it
+  Wire.setClock(400000);
   if (VL53L5CX_i2c.readMultipleBytes(892, (uint8_t *)buf, sizeof(buf))) {
     return 2;
   }
