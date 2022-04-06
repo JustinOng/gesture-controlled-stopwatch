@@ -17,6 +17,7 @@ Adafruit_SSD1306 display(128, 64, &Wire, -1);
 void stopwatch_redraw();
 
 void stopwatch_setup() {
+  Wire.setClock(100000);
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
     return;
@@ -74,6 +75,7 @@ void stopwatch_redraw() {
   char buf[MAX_DIGITS + 1];
   snprintf(buf, sizeof(buf), "%3lu", draw_count);
 
+  Wire.setClock(100000);
   display.fillRect(0, 0, 128, 16, BLACK);
   display.setCursor(0, 0);
   display.print(buf);
@@ -81,6 +83,7 @@ void stopwatch_redraw() {
 }
 
 void stopwatch_add_digit(uint8_t c) {
+  Wire.setClock(100000);
   display.fillRect(0, 16, 128, 16, BLACK);
   display.setCursor(0, 16);
   display.print(c);
