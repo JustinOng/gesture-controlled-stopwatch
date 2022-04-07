@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Wire.h>
 
 #include "Inference.h"
 #include "Sensor.h"
@@ -11,7 +12,7 @@ constexpr uint16_t SENSOR_MAX_SIGMA = 10;
 // Sum of all distances must be less than this to count as a control character
 constexpr uint16_t SENSOR_CTRL_THRESHOLD = 3000;
 constexpr uint16_t SENSOR_CTRL_SHORT_DURATION = 500;
-constexpr uint16_t SENSOR_CTRL_LONG_DURATION = 3000;
+constexpr uint16_t SENSOR_CTRL_LONG_DURATION = 2000;
 constexpr char SENSOR_CTRL_SYMBOL = 0xA;
 constexpr float SENSOR_DELTA_FILTER_ALPHA = 0.5;
 
@@ -223,12 +224,15 @@ void loop() {
       }
 
       static uint8_t last_class = 255;
-      if (history_class_count[max_class] > MIN_VALID_COUNT && max_class != last_class) {
-        last_class = max_class;
-
-        Serial.print("Inference: ");
-        Serial.println(max_class);
-        stopwatch_add_digit(max_class);
+      if (history_class_count[max_class] > MIN_VALID_COUNT) {
+        if (max_class != last_class) {
+          last_class = max_class;
+          Serial.print("Inference: ");
+          Serial.println(max_class);
+          stopwatch_add_digit(max_class);
+        }
+      } else {
+        last_class = 255;
       }
     }
 
