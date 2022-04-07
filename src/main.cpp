@@ -30,14 +30,35 @@ void error() {
   }
 }
 
-void setup() {
-  // digitalWrite(PIN_ENABLE_SENSORS_3V3, LOW);
-  while (!Serial) {
-  };
-  Serial.begin(9600);
-  Serial.println("Setup begin");
+int main() {
+  init();
+  initVariant();
 
-  delay(1000);
+  setup();
+  while (1) {
+    loop();
+  }
+}
+
+void setup() {
+  pinMode(PIN_ENABLE_SENSORS_3V3, OUTPUT);
+  pinMode(PIN_ENABLE_I2C_PULLUP, OUTPUT);
+  digitalWrite(PIN_ENABLE_SENSORS_3V3, LOW);
+  digitalWrite(PIN_ENABLE_I2C_PULLUP, LOW);
+
+  digitalWrite(LED_PWR, LOW);
+
+  // https://forum.arduino.cc/t/setting-up-the-arduino-ble-board-for-low-power-applications-compilation/669574
+  NRF_SPI0->ENABLE = 0;
+
+  // Disabling UART0 (saves around 300-500µA) - @Jul10199555 contribution
+  NRF_UART0->TASKS_STOPTX = 1;
+  NRF_UART0->TASKS_STOPRX = 1;
+  NRF_UART0->ENABLE = 0;
+
+  *(volatile uint32_t *)0x40002FFC = 0;
+  *(volatile uint32_t *)0x40002FFC;
+  *(volatile uint32_t *)0x40002FFC = 1;  // Setting up UART registers again due to a library issue
 
   pinMode(LED_RED, OUTPUT);
   digitalWrite(LED_RED, HIGH);
@@ -155,12 +176,9 @@ void loop() {
     }
   }
 
-  // Serial.print("Sleep:");
-  // Serial.println(millis());
-  // __SEV();
-  // __WFE();
-  // Serial.print("Wake:");
-  // Serial.println(millis());
+  __WFE();
+  __SEV();
+  __WFE();
 
   int8_t inference = read_infer();
 
@@ -213,5 +231,7 @@ void loop() {
         stopwatch_add_digit(max_class);
       }
     }
+
+    delay(140);
   }
 }

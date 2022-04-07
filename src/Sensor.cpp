@@ -6,8 +6,15 @@ SparkFun_VL53L5CX imager;
 // Terrible hack to get access to internal i2c driver of the sensor
 extern SparkFun_VL53L5CX_IO VL53L5CX_i2c;
 
+volatile bool data_ready = false;
+
+void isr() {
+  data_ready = true;
+}
 
 int8_t sensor_setup() {
+  attachInterrupt(digitalPinToInterrupt(PIN_INT), isr, FALLING);
+
   pinMode(PIN_POWER, OUTPUT);
   digitalWrite(PIN_POWER, HIGH);
 
@@ -27,13 +34,17 @@ int8_t sensor_setup() {
   imager.setSharpenerPercent(20);
   imager.setResolution(SENSOR_IMAGE_WIDTH * SENSOR_IMAGE_WIDTH);
   imager.setRangingFrequency(5);
-  imager.setIntegrationTime(5);
+  // imager.setIntegrationTime(7);
   imager.startRanging();
 
   return 0;
 }
 
 int8_t sensor_read(uint16_t distances[], uint16_t sigma[]) {
+  if (!data_ready) {
+    return 1;
+  }
+
   if (!imager.isDataReady()) {
     return 1;
   }
