@@ -1,0 +1,194 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: Python 3 (ipykernel)
+    language: python
+    name: python3
+---
+
+```{python}
+TRAIN_FRAC = 0.95
+VALIDATION_FRAC = 0.1 # fraction of TRAIN_FRAC to use as validation set when training
+```
+
+```{python}
+import glob
+
+import tensorflow as tf
+from tensorflow.keras import layers
+from tensorflow_model_optimization.quantization.keras import quantize_model
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import ConfusionMatrixDisplay
+```
+
+```{python}
+MAX_DISTANCE = 400
+MAX_SIGMA = 10
+
+AUGMENT_COUNT = 1000
+AUGMENT_DELTA_RANGE = 10
+
+def load_data(paths):
+    if isinstance(paths, str):
+        paths = [paths]
+
+    df = pd.concat([pd.read_csv(p) for p in paths])
+    df.reset_index(drop=True, inplace=True)
+    
+    labels = df.loc[:, "symbol"].to_numpy()
+    distances = df.loc[:, "dist(0,0)":"dist(7,7)"].to_numpy().reshape((-1, 8, 8, 1))
+    sigma = df.loc[:, "sigma(0,0)":"sigma(7,7)"].to_numpy().reshape((-1, 8, 8, 1))
+    
+    distances = distances.clip(max=MAX_DISTANCE) / MAX_DISTANCE
+    sigma = sigma.clip(max=MAX_SIGMA) / MAX_SIGMA
+    
+    aug_indices = np.random.permutation(distances.shape[0])[:AUGMENT_COUNT]
+    aug_labels = labels[aug_indices]
+    aug_distances = distances[aug_indices, :].copy()
+    aug_sigma = sigma[aug_indices, :]
+    
+    # Shift to/away
+    shift = (np.random.randint(-AUGMENT_DELTA_RANGE, AUGMENT_DELTA_RANGE, size=aug_distances.shape[0]) / MAX_DISTANCE).repeat(64).reshape((-1, 8, 8, 1))
+    aug_distances += shift
+    
+    labels = np.concatenate((labels, aug_labels))
+    distances = np.concatenate((distances, aug_distances))
+    sigma = np.concatenate((sigma, aug_sigma))
+    
+    inputs = np.concatenate((distances, sigma), axis=-1)
+    
+    return inputs, labels
+    
+paths = glob.glob("data/right_sl_sharp_sigma_far*.csv")
+print(f"Loading data from {', '.join(paths)}")
+x, y = load_data(paths)
+
+data_train, data_test, labels_train, labels_test = train_test_split(x, y, train_size=TRAIN_FRAC, random_state=0)
+
+print(f"Class counts: {dict(zip(*np.unique(labels_test, return_counts=True)))}")
+
+print(f"train: {len(data_train)} test: {len(data_test)}")
+```
+
+```{python}
+NUM_CLASSES = 10
+IMAGE_SIZE = 8
+
+model = tf.keras.Sequential([
+    layers.Conv2D(16, 3, input_shape=(IMAGE_SIZE, IMAGE_SIZE, 2)),.u
+    layers.ReLU(),
+    layers.MaxPooling2D(),
+    layers.Dropout(rate=0.25),
+    layers.Flatten(),
+    layers.Dense(16, activation="relu"),
+    layers.Dense(NUM_CLASSES, activation="softmax")
+])
+
+model.summary()
+
+q_aware_model = quantize_model(model)
+# q_aware_model = model
+q_aware_model.compile(optimizer=tf.keras.optimizers.Adam(),
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+              metrics=['accuracy'])
+
+history = q_aware_model.fit(data_train, labels_train, epochs=1024, batch_size=16, validation_split=VALIDATION_FRAC, verbose=2)
+```
+
+```{python}
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+axes[0].plot(history.history["loss"], label="Training Loss")
+axes[0].plot(history.history["val_loss"], label="Validation Loss")
+axes[0].legend()
+
+axes[1].plot(history.history["accuracy"], label="Training Accuracy")
+axes[1].plot(history.history["val_accuracy"], label="Validation Accuracy")
+axes[1].legend()
+plt.show()
+```
+
+```{python}
+# Function: Convert some hex value into an array for C programming
+def hex_to_c_array(hex_data, var_name):
+
+  c_str = ''
+
+  # Create header guard
+  c_str += '#ifndef ' + var_name.upper() + '_H\n'
+  c_str += '#define ' + var_name.upper() + '_H\n\n'
+
+  # Add array length at top of file
+  c_str += '\nunsigned int ' + var_name + '_len = ' + str(len(hex_data)) + ';\n'
+
+  # Declare C variable
+  c_str += 'unsigned char ' + var_name + '[] = {'
+  hex_array = []
+  for i, val in enumerate(hex_data) :
+
+    # Construct string from hex
+    hex_str = format(val, '#04x')
+
+    # Add formatting so each line stays within 80 characters
+    if (i + 1) < len(hex_data):
+      hex_str += ','
+    if (i + 1) % 12 == 0:
+      hex_str += '\n '
+    hex_array.append(hex_str)
+
+  # Add closing brace
+  c_str += '\n ' + format(' '.join(hex_array)) + '\n};\n\n'
+
+  # Close out header guard
+  c_str += '#endif //' + var_name.upper() + '_H'
+
+  return c_str
+
+def representative_dataset_generator():
+    for data in data_train:
+        d = data.astype(np.float32).reshape(1, 8, 8, 1)
+        yield [d]
+
+converter = tf.lite.TFLiteConverter.from_keras_model(q_aware_model)
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+# converter.representative_dataset = representative_dataset_generator
+                           
+model_tflite = converter.convert()
+
+with open("model.tflite", "wb") as f:
+    f.write(model_tflite)
+                           
+with open("number_model.h", "w") as f:
+    f.write(hex_to_c_array(model_tflite, "number_model"))
+    
+display(f"{len(model_tflite)=}")
+```
+
+```{python}
+model_tfl = tf.lite.Interpreter("model.tflite")
+model_tfl.allocate_tensors()
+
+model_tfl_input_index = model_tfl.get_input_details()[0]["index"]
+model_tfl_output_index = model_tfl.get_output_details()[0]["index"]
+
+# y_full = model.predict(data_test).argmax(axis=1)
+y_tflite = np.ndarray(len(data_test))
+i = 0
+for data in data_test:
+    input_tensor = tf.convert_to_tensor([data], dtype=np.float32)
+    model_tfl.set_tensor(model_tfl_input_index, input_tensor)
+    model_tfl.invoke()
+    y_tflite[i] = np.argmax(model_tfl.get_tensor(model_tfl_output_index))
+    i += 1
+
+ConfusionMatrixDisplay.from_predictions(y_true=labels_test, y_pred=y_tflite)
+plt.show()
+```
