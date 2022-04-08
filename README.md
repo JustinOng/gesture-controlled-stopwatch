@@ -1,8 +1,3 @@
-Features of the application
-Model Training approach
-Inference performance evaluation
-Any optimization techniques used
-
 # Gesture-Controlled Stopwatch
 
 This discusses a gesture-controlled stopwatch, which allows time to be set with hand sign digits, then started by covering the sensor.
