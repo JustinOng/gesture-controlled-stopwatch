@@ -7,6 +7,8 @@ Any optimization techniques used
 
 This discusses a gesture-controlled stopwatch, which allows time to be set with hand sign digits, then started by covering the sensor.
 
+https://user-images.githubusercontent.com/9336475/162354235-2fe77fd1-f368-4b10-96f7-b48f7f26dbe2.mp4
+
 # Background
 
 <p align="center"><img src="images/front.jpg" width="50%"/><img src="images/back.jpg" width="50%"/><br/>Final Implementation</p>
